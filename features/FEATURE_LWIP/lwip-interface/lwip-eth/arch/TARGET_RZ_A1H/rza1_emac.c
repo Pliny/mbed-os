@@ -1,8 +1,21 @@
-#include "lwip/opt.h"
-#include "lwip/tcpip.h"
-#include "netif/etharp.h"
-#include "lwip/ethip6.h"
+//TODO #include "lwip/opt.h"
+//TODO #include "lwip/tcpip.h"
+//TODO #include "netif/etharp.h"
+//TODO #include "lwip/ethip6.h"
 #include "mbed_interface.h"
+
+// TODO ADDED
+#include "cmsis_os.h"
+#include "fsl_phy.h"
+
+#include "emac_api.h"
+#include "emac_stack_mem.h"
+#include "mbed_assert.h"
+#include "mbed_error.h"
+#include "nsapi_types.h"
+
+// **********************************
+
 #include "ethernet_api.h"
 #include "ethernetext_api.h"
 
@@ -11,7 +24,8 @@
 #define PHY_TASK_WAIT           (200)
 
 /* memory */
-static sys_sem_t recv_ready_sem;    /* receive ready semaphore */
+static osSemaphoreId (recv_ready_sem);    /* receive ready semaphore */
+static osSemaphoreDef(recv_ready_sem_def);
 
 /* function */
 static void rza1_recv_task(void *arg);
@@ -136,7 +150,7 @@ static err_t rza1_low_level_output(struct netif *netif, struct pbuf *p) {
 }
 
 static void rza1_recv_callback(void) {
-    sys_sem_signal(&recv_ready_sem);
+    osSemaphoreRelease(&recv_ready_sem);
 }
 
 err_t eth_arch_enetif_init(struct netif *netif)
@@ -192,7 +206,7 @@ err_t eth_arch_enetif_init(struct netif *netif)
     ethernetext_init(&ethcfg);
 
     /* semaphore */
-    sys_sem_new(&recv_ready_sem, 0);
+    recv_ready_sem = osSemaphoreCreate(&recv_ready_sem_def, 0);
 
     /* task */
     sys_thread_new("rza1_recv_task", rza1_recv_task, netif, DEFAULT_THREAD_STACKSIZE, RECV_TASK_PRI);
